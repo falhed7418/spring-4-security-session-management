@@ -5,9 +5,11 @@ A project that shows an example of custom 'Concurrent Session Control' in Spring
 Spring security allows you to define the max nr of sessions allowed per login.
 Add the following lines to your application context :
 
+```
 <session-management>
 	<concurrency-control max-sessions="1" />
 </session-management>
+```
 
 You can define your own session strategy and that's what's done in this project. 
 
