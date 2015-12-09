@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	<!-- Root Context: defines shared resources visible to all other web components -->
+
+	<security:http>
+	    <security:custom-filter position="CONCURRENT_SESSION_FILTER" ref="concurrencyFilter" />
+
+	    <security:session-management session-authentication-strategy-ref="sas"/>
+
+		<security:intercept-url pattern="/login" access="isAnonymous()" />
+		<security:intercept-url pattern="/**" access="hasRole('ROLE_USER')" />
+
+		<security:form-login login-page="/login"
+		    				 default-target-url="/home"
+							 authentication-failure-handler-ref="customAuthenticationFailureHandler" />
+
+		<security:logout logout-url="/logout" />
+
+		<security:csrf disabled="true"/>
+	</security:http>
+
+	<security:authentication-manager alias="authenticationManager">
+		<security:authentication-provider>
+		  <security:user-service>
+			<security:user name="j" password="s" authorities="ROLE_USER" />
+		  </security:user-service>
+		</security:authentication-provider>
+	</security:authentication-manager>
+
+<!--  ********************************************************************* -->
+
+	<bean id="sessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl" />
+
+	<!-- Filter die controleert of je ondertss niet uitgelogd bent doordat iemand anders ook ingelogd is en hierbij de maxSessions overschreden is -->
+	<bean id="concurrencyFilter" class="org.springframework.security.web.session.ConcurrentSessionFilter">
+		<constructor-arg ref="sessionRegistry"/>
+		<constructor-arg value="/login?error=U bent uitgelogd omdat er reeds iemand met uw login is aangelogd"/>
+	</bean>
+
+	<bean id="sas" class="org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy">
+		<constructor-arg>
+			<list>
+				<bean class="be.faros.security.SessionControlConfirmationStrategy">
+					<constructor-arg ref="sessionRegistry"/>
+					<property name="maximumSessions" value="1" />
+				</bean>
+				<bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy"/>
+				<bean class="org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy">
+					<constructor-arg ref="sessionRegistry"/>
+				</bean>
+			</list>
+		</constructor-arg>
+	</bean>
+
+	<bean id="customAuthenticationFailureHandler" class="org.springframework.security.web.authentication.ExceptionMappingAuthenticationFailureHandler" >
+	    <property name="exceptionMappings">
+	        <props>
+	            <prop key="be.faros.security.SessionAuthenticationConfirmationException">/maxsessionreachedconfirmation</prop>
+	            <prop key="org.springframework.security.web.authentication.session.SessionAuthenticationException">/login</prop>
+	        </props>
+	    </property>
+	    <property name="redirectStrategy" ref="usernamePasswordRedirectStrategy"/>
+	</bean>
+
+	<bean id="usernamePasswordRedirectStrategy" class="be.faros.security.UsernamePasswordRedirectStrategy"/>
+
+</beans>
